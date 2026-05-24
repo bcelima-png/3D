@@ -1,0 +1,291 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedidos de Impresión 3D - Prototipo Optimizado</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4" type="module"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4 md:p-8">
+
+    <div class="w-full max-w-6xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12">
+        
+        <div class="lg:col-span-5 p-6 md:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-800">
+            <div>
+                <div class="flex items-center space-x-3 mb-6">
+                    <div class="p-2 bg-amber-500/10 text-amber-500 rounded-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold tracking-tight text-white">Creador de Impresiones 3D</h1>
+                        <p class="text-xs text-slate-400">Personaliza tu orden y simula las dimensions</p>
+                    </div>
+                </div>
+
+                <form id="printForm" class="space-y-5" onsubmit="event.preventDefault();">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1.5">¿Qué quieres imprimir?</label>
+                        <textarea 
+                            id="description"
+                            rows="3" 
+                            class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-500 transition-colors placeholder:text-slate-600"
+                            placeholder="Describe detalladamente tu objeto..."
+                        >Prototipo interactivo de patito voxel art para escritorio.</textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1.5">Imagen o Modelo de Referencia</label>
+                        <div class="border-2 border-dashed border-slate-800 hover:border-slate-700 rounded-xl p-4 text-center cursor-pointer transition-colors relative group">
+                            <input type="file" id="fileInput" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/*,.stl,.obj">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-8 w-8 text-slate-500 group-hover:text-amber-500 transition-colors mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span id="fileName" class="text-xs text-slate-400 block group-hover:text-slate-300">Arrastra una imagen o haz clic para buscar</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1.5">Material de Impresión</label>
+                        <select id="material" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-amber-500 transition-colors">
+                            <option value="pla" data-multiplier="1500">PLA (Estándar - $1,500 / cm³)</option>
+                            <option value="abs" data-multiplier="1800">ABS (Resistente - $1,800 / cm³)</option>
+                            <option value="petg" data-multiplier="2000">PETG (Exterior - $2,000 / cm³)</option>
+                            <option value="resina" data-multiplier="3500">Resina (Alta Definición - $3,500 / cm³)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-1.5">
+                            <label class="text-sm font-medium text-slate-300">Tamaño solicitado (Alto)</label>
+                            <span id="sizeLabel" class="text-sm font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded">5 cm</span>
+                        </div>
+                        <input 
+                            type="range" 
+                            id="sizeSlider" 
+                            min="2" 
+                            max="30" 
+                            value="5" 
+                            step="1"
+                            class="w-full h-2 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                        >
+                        <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                            <span>Mín: 2 cm</span>
+                            <span>Máx: 30 cm</span>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="mt-6 pt-4 border-t border-slate-800/60 bg-slate-950/50 p-4 rounded-xl border border-slate-800 mb-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-xs text-slate-400 font-medium uppercase tracking-wider">Costo Estimado</p>
+                        <p class="text-[10px] text-slate-500">Base fijo + volumen real filtrado</p>
+                    </div>
+                    <div class="text-right">
+                        <span id="totalPrice" class="text-2xl font-black text-emerald-400">$0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <button type="button" onclick="alert('¡Pedido enviado! Nos pondremos en contacto para confirmar los detalles.')" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold py-3 px-4 rounded-xl shadow-lg transition-all transform active:scale-[0.98] text-sm cursor-pointer">
+                    Enviar Solicitud de Pedido
+                </button>
+            </div>
+        </div>
+
+        <div class="lg:col-span-7 h-[450px] lg:h-auto relative bg-slate-950 flex flex-col justify-between p-4">
+            <div class="absolute top-4 left-4 z-10 pointer-events-none bg-slate-900/80 backdrop-blur border border-slate-800 p-3 rounded-xl shadow-md">
+                <p class="text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-0.5">Vista Previa de Escala</p>
+                <h3 class="text-base font-bold text-white flex items-center gap-1.5">
+                    Pato Pixel Art 3D: <span id="duckHeightDisplay" class="text-amber-400">5.0 cm</span>
+                </h3>
+            </div>
+
+            <div class="absolute bottom-4 right-4 z-10 pointer-events-none text-right bg-slate-900/40 backdrop-blur px-2.5 py-1 rounded-md">
+                <p class="text-[10px] text-slate-400">Clic izquierdo + arrastrar para rotar • Rueda para Zoom</p>
+            </div>
+
+            <div id="canvasContainer" class="w-full h-full rounded-xl overflow-hidden"></div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- 1. CAPTURA DE INTERFAZ ---
+        const sizeSlider = document.getElementById('sizeSlider');
+        const sizeLabel = document.getElementById('sizeLabel');
+        const materialSelect = document.getElementById('material');
+        const totalPriceDisplay = document.getElementById('totalPrice');
+        const duckHeightDisplay = document.getElementById('duckHeightDisplay');
+        const fileInput = document.getElementById('fileInput');
+        const fileName = document.getElementById('fileName');
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                fileName.innerText = `Archivo: ${e.target.files[0].name}`;
+                fileName.classList.replace('text-slate-400', 'text-amber-400');
+                fileName.classList.add('font-medium');
+            }
+        });
+
+        // --- 2. LOGICA DE CÁLCULO MEJORADA ---
+        const TOTAL_VOXELS = 62;
+
+        function calculatePrice() {
+            const heightCm = parseFloat(sizeSlider.value);
+            const selectedOption = materialSelect.options[materialSelect.selectedIndex];
+            const pricePerCm3 = parseFloat(selectedOption.getAttribute('data-multiplier'));
+            
+            const voxelSizeCm = heightCm / 6;
+            const singleVoxelVolume = Math.pow(voxelSizeCm, 3);
+            
+            const infillFactor = 0.20; 
+            const realVolumeCm3 = TOTAL_VOXELS * singleVoxelVolume * infillFactor;
+
+            const baseCost = 5000; 
+            const total = baseCost + (realVolumeCm3 * pricePerCm3);
+
+            totalPriceDisplay.innerText = '$' + Math.round(total).toLocaleString('es-CO');
+        }
+
+        // --- 3. CONFIGURACIÓN ENTORNO THREE.JS ---
+        const container = document.getElementById('canvasContainer');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x090d16);
+
+        const gridHelper = new THREE.GridHelper(40, 40, 0x334155, 0x1e293b);
+        gridHelper.position.y = -4;
+        scene.add(gridHelper);
+
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.set(14, 10, 18);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.shadowMap.enabled = true;
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI / 2; 
+        controls.minDistance = 6;
+        controls.maxDistance = 45;
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+        dirLight.position.set(15, 25, 12);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        // --- 4. CONSTRUCCIÓN DE MODELO VOXEL ---
+        const duckGroup = new THREE.Group();
+        scene.add(duckGroup);
+
+        const matYellow = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.3, metalness: 0.1 });
+        const matOrange = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.3 });
+        const matBlack = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.2 });
+
+        const boxGeo = new THREE.BoxGeometry(0.98, 0.98, 0.98);
+
+        const voxelStructure = [
+            [-1, 0, -1, matYellow], [0, 0, -1, matYellow], [1, 0, -1, matYellow],
+            [-2, 0,  0, matYellow], [-1, 0,  0, matYellow], [0, 0,  0, matYellow], [1, 0,  0, matYellow], [2, 0,  0, matYellow],
+            [-2, 0,  1, matYellow], [-1, 0,  1, matYellow], [0, 0,  1, matYellow], [1, 0,  1, matYellow], [2, 0,  1, matYellow],
+            [-1, 0,  2, matYellow], [0, 0,  2, matYellow], [1, 0,  2, matYellow],
+            [-2, 1, -1, matYellow], [-1, 1, -1, matYellow], [0, 1, -1, matYellow], [1, 1, -1, matYellow],
+            [-3, 1,  0, matYellow], [-2, 1,  0, matYellow], [-1, 1,  0, matYellow], [0, 1,  0, matYellow], [1, 1,  0, matYellow], [2, 1,  0, matYellow],
+            [-3, 1,  1, matYellow], [-2, 1,  1, matYellow], [-1, 1,  1, matYellow], [0, 1,  1, matYellow], [1, 1,  1, matYellow], [2, 1,  1, matYellow],
+            [-2, 1,  2, matYellow], [-1, 1,  2, matYellow], [0, 1,  2, matYellow], [1, 1,  2, matYellow],
+            [-2, 1, -2, matYellow], [0, 1, -2, matYellow],
+            [-2, 2, -1, matYellow], [-1, 2, -1, matYellow], [0, 2, -1, matYellow], [1, 2, -1, matYellow],
+            [-2, 2,  0, matYellow], [-1, 2,  0, matYellow], [0, 2,  0, matYellow], [1, 2,  0, matYellow], [2, 2,  0, matYellow],
+            [-2, 2,  1, matYellow], [-1, 2,  1, matYellow], [0, 2,  1, matYellow], [1, 2,  1, matYellow],
+            [-1, 3, 0, matYellow], [0, 3, 0, matYellow], [-1, 3, 1, matYellow], [0, 3, 1, matYellow],
+            [-1, 4, -1, matYellow], [0, 4, -1, matYellow],
+            [-2, 4,  0, matYellow], [-1, 4,  0, matYellow], [0, 4,  0, matYellow], [1, 4,  0, matYellow],
+            [-2, 4,  1, matYellow], [-1, 4,  1, matYellow], [0, 4,  1, matYellow], [1, 4,  1, matYellow],
+            [-1, 4,  2, matBlack],  [0, 4,  2, matBlack], 
+            [-3, 4,  0, matOrange], [-3, 4, 1, matOrange], [-2, 4, 0, matOrange],
+            [-1, 5, 0, matYellow], [0, 5, 0, matYellow], [-1, 5, 1, matYellow], [0, 5, 1, matYellow],
+            [-2, 5, 0, matYellow], [-2, 5, 1, matYellow]
+        ];
+
+        voxelStructure.forEach(data => {
+            const mesh = new THREE.Mesh(boxGeo, data[3]);
+            mesh.position.set(data[0], data[1], data[2]);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            duckGroup.add(mesh);
+        });
+
+        const box = new THREE.Box3().setFromObject(duckGroup);
+        const lowestY = box.min.y;
+        duckGroup.children.forEach(child => {
+            child.position.y -= lowestY;
+        });
+
+        // --- 5. ACTUALIZACIÓN DE ENTIDADES ---
+        function updateAll() {
+            const val = parseFloat(sizeSlider.value);
+            sizeLabel.innerText = `${val} cm`;
+            duckHeightDisplay.innerText = `${val.toFixed(1)} cm`;
+            
+            const uniformScale = val / 6;
+            duckGroup.scale.set(uniformScale, uniformScale, uniformScale);
+            duckGroup.position.set(0.5, -4, -0.5);
+            
+            calculatePrice();
+        }
+
+        sizeSlider.addEventListener('input', updateAll);
+        materialSelect.addEventListener('change', updateAll);
+
+        // --- 6. RENDERING & RESPONSIVE ---
+        function handleResize() {
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+        
+        window.addEventListener('resize', handleResize);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            duckGroup.rotation.y += 0.003;
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Arranque inicial con ResizeObserver para evitar pantallas negras en móviles
+        updateAll();
+        const resizeObserver = new ResizeObserver(() => {
+            handleResize();
+        });
+        resizeObserver.observe(container);
+        
+        animate();
+    </script>
+</body>
+</html>
